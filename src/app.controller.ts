@@ -1,10 +1,26 @@
-import { Controller, Request, Post, UseGuards, Get } from '@nestjs/common';
+import {
+  Controller,
+  Request,
+  Post,
+  UseGuards,
+  Get,
+  Res,
+  HttpStatus,
+  Req,
+  Injectable
+} from '@nestjs/common';
+import { Response } from 'express';
+import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth/auth.service';
-import { JwtAuthGuard } from './auth/jwt-auth-guard';
+import { JwtAuthGuard } from './auth/jwt.guard';
+import { GoogleOauthGuard } from './auth/google.guard';
 
 @Controller('auth/')
 export class AppController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private jwtService: JwtService
+  ) {}
 
   @Post('login')
   async login(@Request() req) {
@@ -12,8 +28,26 @@ export class AppController {
     return this.authService.login(user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Get('google')
+  @UseGuards(GoogleOauthGuard)
+  async auth() {}
+
+  @UseGuards(GoogleOauthGuard)
+  @Get('google/callback')
+  async googleAuth(@Req() req, @Res() res: Response) {
+    const token = await this.jwtService.sign(req.user);
+  
+    res.cookie('oauth_token_test', token, {
+      maxAge: 2592000000,
+      sameSite: true,
+      secure: false,
+    });
+
+    return res.send().status(HttpStatus.OK);
+  }
+
   @Get('profile')
+  @UseGuards(JwtAuthGuard)
   getProfile(@Request() req) {
     return req.user;
   }
